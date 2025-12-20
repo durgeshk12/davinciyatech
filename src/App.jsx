@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
+import Services from './pages/Services';
+import Solutions from './pages/Solutions';
 
 // Services
 import BrandingServices from './pages/services/BrandingServices';
@@ -35,6 +37,13 @@ import Industries from './pages/about/Industries';
 // Contact
 import Contact from './pages/Contact';
 
+// Product Suite
+import ProductSuite from './pages/ProductSuite';
+
+// Blog
+import Blog from './pages/Blog';
+import BlogDetail from './pages/BlogDetail';
+
 function App() {
   return (
     <Router>
@@ -44,6 +53,10 @@ function App() {
           <Route path="/" element={<Home />} />
           
           {/* Services Routes */}
+          <Route path="/services" element={<Services />} />
+          
+          {/* Solutions Routes */}
+          <Route path="/solutions" element={<Solutions />} />
           <Route path="/services/branding-services" element={<BrandingServices />} />
           <Route path="/services/content-writing" element={<ContentWriting />} />
           <Route path="/services/conversion-rate-optimization" element={<ConversionRateOptimization />} />
@@ -71,9 +84,14 @@ function App() {
           <Route path="/about/about-us" element={<AboutUs />} />
           <Route path="/about/industries" element={<Industries />} />
           
-          {/* Placeholder routes for other pages */}
-          <Route path="/product-suite" element={<div className="py-16 px-5 max-w-6xl mx-auto"><h1 className="text-4xl text-gray-800 mb-4">Product Suite</h1><p className="text-lg text-gray-600">Explore our product suite.</p></div>} />
-          <Route path="/blog" element={<div className="py-16 px-5 max-w-6xl mx-auto"><h1 className="text-4xl text-gray-800 mb-4">Blog</h1><p className="text-lg text-gray-600">Read our latest blog posts.</p></div>} />
+          {/* Product Suite */}
+          <Route path="/product-suite" element={<ProductSuite />} />
+          
+          {/* Blog Routes */}
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogDetail />} />
+          
+          {/* Contact */}
           <Route path="/contact" element={<Contact />} />
         </Routes>
         <Footer />

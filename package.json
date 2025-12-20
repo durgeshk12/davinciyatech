@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fetch-blog": "node scripts/fetch-blog-data.js",
+    "process-blog": "node scripts/process-blog-data.js",
+    "update-blog": "npm run fetch-blog && npm run process-blog"
   },
   "dependencies": {
     "react": "^18.2.0",

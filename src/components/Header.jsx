@@ -32,11 +32,6 @@ const Header = () => {
     { name: 'CRM Solutions', path: '/solutions/crm-solutions' },
   ];
 
-  const aboutItems = [
-    { name: 'About Us', path: '/about/about-us' },
-    { name: 'Industries', path: '/about/industries' },
-  ];
-
   const handleMouseEnter = (dropdown) => {
     setActiveDropdown(dropdown);
   };
@@ -187,45 +182,9 @@ const Header = () => {
               />
             </div>
 
-            <div
-              className="relative"
-              onMouseEnter={() => handleMouseEnter('about')}
-              onMouseLeave={handleMouseLeave}
-            >
-              <button
-                className={`text-sm font-medium flex items-center gap-1.5 transition-all duration-200 ${
-                  activeDropdown === 'about'
-                    ? 'text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                About
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`transition-transform duration-200 ${activeDropdown === 'about' ? 'rotate-180' : ''}`}
-                >
-                  <path
-                    d="M3 4.5 L6 7.5 L9 4.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <DropdownMenu 
-                title="ABOUT COMPANY" 
-                items={aboutItems} 
-                isOpen={activeDropdown === 'about'}
-                dropdownName="about"
-                onMouseEnter={() => handleMouseEnter('about')}
-                onMouseLeave={handleMouseLeave}
-              />
-            </div>
+            <Link to="/about/about-us" className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors">
+              About Us
+            </Link>
 
             <Link to="/product-suite" className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors">
               Product Suite
@@ -306,7 +265,14 @@ const Header = () => {
             <nav className="space-y-4">
               <MobileDropdown title="Services" items={servicesItems} />
               <MobileDropdown title="Solutions" items={solutionsItems} />
-              <MobileDropdown title="About" items={aboutItems} />
+              
+              <Link
+                to="/about/about-us"
+                className="block text-gray-600 py-2 hover:text-numero-teal transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                About Us
+              </Link>
               
               <Link
                 to="/product-suite"
