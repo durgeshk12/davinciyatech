@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import { getPages, deletePage, updatePage, createPage, uploadImage } from '../../utils/pagesApi';
 
+if (!import.meta.env.VITE_API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL environment variable is required. Please set it in client/.env.production or client/.env.development file.');
+}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const IMAGE_BASE_URL = API_BASE_URL.replace('/api', '');
+
 const Pages = () => {
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -499,7 +505,7 @@ const Pages = () => {
                                               setUploadingImage(true);
                                               setError('');
                                               const result = await uploadImage(file);
-                                              const imageUrl = `http://localhost:5030${result.url}`;
+                                              const imageUrl = `${IMAGE_BASE_URL}${result.url}`;
                                               const newSlides = [...editForm.hero_slides];
                                               newSlides[slideIndex].image = imageUrl;
                                               setEditForm({ ...editForm, hero_slides: newSlides });
@@ -687,7 +693,7 @@ const Pages = () => {
                                   }
                                   
                                   const result = await uploadImage(file);
-                                  const imageUrl = `http://localhost:5030${result.url}`;
+                                  const imageUrl = `${IMAGE_BASE_URL}${result.url}`;
                                   uploadedUrls.push(imageUrl);
                                 }
                                 
@@ -827,7 +833,7 @@ const Pages = () => {
                                   setError('');
                                   const result = await uploadImage(file);
                                   // Use full URL for the image
-                                  const imageUrl = `http://localhost:5030${result.url}`;
+                                  const imageUrl = `${IMAGE_BASE_URL}${result.url}`;
                                   setEditForm({ ...editForm, header_image: imageUrl });
                                 } catch (err) {
                                   setError('Failed to upload image: ' + err.message);
@@ -912,7 +918,7 @@ const Pages = () => {
                                 setUploadingImage(true);
                                 setError('');
                                 const result = await uploadImage(file);
-                                const imageUrl = `http://localhost:5030${result.url}`;
+                                const imageUrl = `${IMAGE_BASE_URL}${result.url}`;
                                 
                                 // Insert image tag at cursor position or at the end
                                 const textarea = document.querySelector('textarea[placeholder*="HTML content"]');

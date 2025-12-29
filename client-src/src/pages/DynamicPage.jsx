@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5030/api';
+if (!import.meta.env.VITE_API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL environment variable is required. Please set it in client/.env.production or client/.env.development file.');
+}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const IMAGE_BASE_URL = API_BASE_URL.replace('/api', '');
 
 // Hero Slider Component

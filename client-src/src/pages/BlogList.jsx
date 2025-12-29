@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5030/api';
+if (!import.meta.env.VITE_API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL environment variable is required. Please set it in client/.env.production or client/.env.development file.');
+}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const IMAGE_BASE_URL = API_BASE_URL.replace('/api', '');
 
-const PortfolioList = () => {
-  const [portfolios, setPortfolios] = useState([]);
+const BlogList = () => {
+  const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -20,7 +23,7 @@ const PortfolioList = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    fetchPortfolios(true); // Reset to first page when filters change
+    fetchBlogs(true); // Reset to first page when filters change
   }, [searchTerm, selectedCategory]);
 
   const buildQueryParams = (page = 1, limit = 12) => {
@@ -40,7 +43,7 @@ const PortfolioList = () => {
     return params.toString();
   };
 
-  const fetchPortfolios = async (reset = false) => {
+  const fetchBlogs = async (reset = false) => {
     try {
       if (reset) {
         setLoading(true);
@@ -52,43 +55,43 @@ const PortfolioList = () => {
 
       const page = reset ? 1 : currentPage;
       const queryParams = buildQueryParams(page);
-      const response = await fetch(`${API_BASE_URL}/portfolio/public?${queryParams}`);
+      const response = await fetch(`${API_BASE_URL}/blog/public?${queryParams}`);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch portfolios');
+        throw new Error('Failed to fetch blogs');
       }
 
       const data = await response.json();
-      const newPortfolios = data.data || [];
+      const newBlogs = data.data || [];
 
       if (reset) {
-        setPortfolios(newPortfolios);
+        setBlogs(newBlogs);
         // Extract unique categories
         const uniqueCategories = [...new Set(
-          newPortfolios.flatMap(portfolio => portfolio.category?.name || [])
+          newBlogs.flatMap(blog => blog.categories?.map(cat => cat.name) || [])
         )];
         setCategories(uniqueCategories);
       } else {
-        setPortfolios(prev => [...prev, ...newPortfolios]);
+        setBlogs(prev => [...prev, ...newBlogs]);
       }
 
-      // Check if there are more portfolios to load
-      setHasMore(newPortfolios.length === 12);
+      // Check if there are more blogs to load
+      setHasMore(newBlogs.length === 12);
       if (!reset) {
         setCurrentPage(prev => prev + 1);
       }
     } catch (err) {
-      console.error('Error fetching portfolios:', err);
-      setError('Failed to load portfolios');
+      console.error('Error fetching blogs:', err);
+      setError('Failed to load blogs');
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
   };
 
-  const loadMorePortfolios = () => {
+  const loadMoreBlogs = () => {
     if (!loadingMore && hasMore) {
-      fetchPortfolios(false);
+      fetchBlogs(false);
     }
   };
 
@@ -113,7 +116,7 @@ const PortfolioList = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading portfolios...</p>
+              <p className="mt-4 text-gray-600">Loading blogs...</p>
             </div>
           </div>
         </div>
@@ -141,9 +144,9 @@ const PortfolioList = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Portfolio</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Blog</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Explore our successful projects and see how we've helped businesses achieve their goals.
+              Insights, strategies, and stories from the world of digital marketing and technology.
             </p>
           </div>
 
@@ -169,7 +172,7 @@ const PortfolioList = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
                   <input
                     type="text"
-                    placeholder="Search portfolios..."
+                    placeholder="Search blogs..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -204,24 +207,24 @@ const PortfolioList = () => {
             </div>
           )}
 
-          {/* Portfolio Grid */}
-          {portfolios.length === 0 ? (
+          {/* Blog Grid */}
+          {blogs.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No portfolio items available yet.</p>
+              <p className="text-gray-600">No blog posts available yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {portfolios.map((portfolio) => (
-                <article key={portfolio._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              {blogs.map((blog) => (
+                <article key={blog._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   {/* Featured Image */}
-                  {portfolio.featuredImage && (
+                  {blog.featuredImage && (
                     <div className="aspect-w-16 aspect-h-9">
                       <img
-                        src={`${IMAGE_BASE_URL}${portfolio.featuredImage}`}
-                        alt={portfolio.title}
+                        src={`${IMAGE_BASE_URL}${blog.featuredImage}`}
+                        alt={blog.title}
                         className="w-full h-48 object-cover"
                         onError={(e) => {
-                          e.target.src = 'https://picsum.photos/400/200?random=4';
+                          e.target.src = 'https://picsum.photos/400/200?random=5';
                         }}
                       />
                     </div>
@@ -229,73 +232,50 @@ const PortfolioList = () => {
 
                   {/* Content */}
                   <div className="p-6">
-                    {/* Category */}
-                    {portfolio.category && (
-                      <div className="mb-3">
-                        <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                          {portfolio.category.name}
-                        </span>
+                    {/* Categories */}
+                    {blog.categories && blog.categories.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {blog.categories.map((category, index) => (
+                          <span
+                            key={index}
+                            className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                          >
+                            {category.name}
+                          </span>
+                        ))}
                       </div>
                     )}
 
                     {/* Title */}
                     <h2 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">
                       <Link
-                        to={`/portfolio/${portfolio.slug}`}
+                        to={`/blog/${blog.slug}`}
                         className="hover:text-blue-600 transition-colors duration-200"
                       >
-                        {portfolio.title}
+                        {blog.title}
                       </Link>
                     </h2>
 
                     {/* Excerpt */}
                     <p className="text-gray-600 mb-4 line-clamp-3">
-                      {portfolio.excerpt}
+                      {blog.excerpt}
                     </p>
 
-                    {/* Client */}
-                    {portfolio.client && (
-                      <p className="text-sm text-gray-500 mb-2">
-                        <span className="font-medium">Client:</span> {portfolio.client}
-                      </p>
-                    )}
-
-                    {/* Technologies */}
-                    {portfolio.technologies && portfolio.technologies.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-1">
-                          {portfolio.technologies.slice(0, 3).map((tech, index) => (
-                            <span
-                              key={index}
-                              className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
-                            >
-                              {tech}
-                            </span>
-                          ))}
-                          {portfolio.technologies.length > 3 && (
-                            <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-                              +{portfolio.technologies.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Meta */}
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                      <span>{formatDate(portfolio.date)}</span>
-                      {portfolio.duration && (
-                        <span>{portfolio.duration}</span>
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>{formatDate(blog.date)}</span>
+                      {blog.author && blog.author.name && (
+                        <span>By {blog.author.name}</span>
                       )}
                     </div>
 
                     {/* Read More */}
                     <div className="mt-4">
                       <Link
-                        to={`/portfolio/${portfolio.slug}`}
+                        to={`/blog/${blog.slug}`}
                         className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
                       >
-                        View Project →
+                        Read More →
                       </Link>
                     </div>
                   </div>
@@ -305,10 +285,10 @@ const PortfolioList = () => {
           )}
 
           {/* Load More Button */}
-          {portfolios.length > 0 && hasMore && (
+          {blogs.length > 0 && hasMore && (
             <div className="text-center mt-12">
               <button
-                onClick={loadMorePortfolios}
+                onClick={loadMoreBlogs}
                 disabled={loadingMore}
                 className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-2 mx-auto"
               >
@@ -318,16 +298,16 @@ const PortfolioList = () => {
                     Loading...
                   </>
                 ) : (
-                  'Load More Projects'
+                  'Load More Blogs'
                 )}
               </button>
             </div>
           )}
 
-          {/* No More Portfolios Message */}
-          {portfolios.length > 0 && !hasMore && (
+          {/* No More Blogs Message */}
+          {blogs.length > 0 && !hasMore && (
             <div className="text-center mt-12">
-              <p className="text-gray-600">You've reached the end of our portfolio.</p>
+              <p className="text-gray-600">You've reached the end of our blog posts.</p>
             </div>
           )}
         </div>
@@ -336,4 +316,4 @@ const PortfolioList = () => {
   );
 };
 
-export default PortfolioList;
+export default BlogList;

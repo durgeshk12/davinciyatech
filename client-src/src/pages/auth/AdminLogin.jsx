@@ -56,13 +56,6 @@ const AdminLogin = () => {
               User Login
             </Link>
           </p>
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-800 text-center">
-              <strong>Demo Admin Credentials:</strong><br />
-              Email: admin@davinciyatech.com<br />
-              Password: Admin@123
-            </p>
-          </div>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
-import { getPortfolios, deletePortfolio, updatePortfolio, createPortfolio, uploadImage } from '../../utils/portfolioApi';
+import { getBlogs, deleteBlog, updateBlog, createBlog, uploadImage } from '../../utils/blogApi';
 
-const IMAGE_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5030/api').replace('/api', '');
+if (!import.meta.env.VITE_API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL environment variable is required. Please set it in client/.env.production or client/.env.development file.');
+}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const IMAGE_BASE_URL = API_BASE_URL.replace('/api', '');
 
-const Portfolio = () => {
-  const [portfolios, setPortfolios] = useState([]);
+const Blog = () => {
+  const [blogs, setBlogs] = useState([]);
+  const [filteredBlogs, setFilteredBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -14,59 +19,102 @@ const Portfolio = () => {
   const [error, setError] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [authorFilter, setAuthorFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   useEffect(() => {
-    loadPortfolios();
+    loadBlogs();
   }, []);
 
-  const loadPortfolios = async () => {
+  // Filter blogs whenever filter criteria change
+  useEffect(() => {
+    let filtered = [...blogs];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(blog =>
+        blog.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.excerpt?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.content?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter) {
+      filtered = filtered.filter(blog => blog.status === statusFilter);
+    }
+
+    // Author filter
+    if (authorFilter) {
+      filtered = filtered.filter(blog =>
+        blog.author?.name?.toLowerCase().includes(authorFilter.toLowerCase())
+      );
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      filtered = filtered.filter(blog => new Date(blog.date) >= fromDate);
+    }
+
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      filtered = filtered.filter(blog => new Date(blog.date) <= toDate);
+    }
+
+    setFilteredBlogs(filtered);
+  }, [blogs, searchTerm, statusFilter, authorFilter, dateFrom, dateTo]);
+
+  const loadBlogs = async () => {
     try {
       setLoading(true);
-      const data = await getPortfolios();
-      setPortfolios(data);
+      const data = await getBlogs();
+      setBlogs(data);
       setError('');
     } catch (error) {
-      console.error('Error loading portfolios:', error);
-      setError('Failed to load portfolios. Please try again.');
+      console.error('Error loading blogs:', error);
+      setError('Failed to load blogs. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this portfolio item?')) {
+    if (!window.confirm('Are you sure you want to delete this blog post?')) {
       return;
     }
 
     try {
-      await deletePortfolio(id);
-      await loadPortfolios();
+      await deleteBlog(id);
+      await loadBlogs();
       setError('');
     } catch (error) {
-      setError('Error deleting portfolio: ' + error.message);
+      setError('Error deleting blog: ' + error.message);
     }
   };
 
-  const handleEdit = (portfolio) => {
-    const portfolioId = portfolio._id || portfolio.id;
-    setEditingId(portfolioId);
+  const handleEdit = (blog) => {
+    const blogId = blog._id || blog.id;
+    setEditingId(blogId);
     setEditForm({
-      title: portfolio.title || '',
-      slug: portfolio.slug || '',
-      excerpt: portfolio.excerpt || '',
-      description: portfolio.description || '',
-      content: portfolio.content || '',
-      featuredImage: portfolio.featuredImage || '',
-      images: portfolio.images || [],
-      category: portfolio.category || { id: '', name: '', slug: '' },
-      tags: portfolio.tags || [],
-      client: portfolio.client || '',
-      technologies: portfolio.technologies || [],
-      duration: portfolio.duration || '',
-      date: portfolio.date ? new Date(portfolio.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      status: portfolio.status || 'draft',
-      meta_title: portfolio.meta_title || '',
-      meta_description: portfolio.meta_description || '',
-      is_active: portfolio.is_active !== undefined ? portfolio.is_active : true,
+      title: blog.title || '',
+      slug: blog.slug || '',
+      excerpt: blog.excerpt || '',
+      content: blog.content || '',
+      featuredImage: blog.featuredImage || '',
+      author: blog.author || { name: 'Admin', id: '' },
+      date: blog.date ? new Date(blog.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      categories: blog.categories || [],
+      tags: blog.tags || [],
+      meta_title: blog.meta_title || '',
+      meta_description: blog.meta_description || '',
+      status: blog.status || 'draft',
+      is_active: blog.is_active !== undefined ? blog.is_active : true,
     });
     setShowEditModal(true);
     setError('');
@@ -78,19 +126,15 @@ const Portfolio = () => {
       title: '',
       slug: '',
       excerpt: '',
-      description: '',
       content: '',
       featuredImage: '',
-      images: [],
-      category: { id: '', name: '', slug: '' },
-      tags: [],
-      client: '',
-      technologies: [],
-      duration: '',
+      author: { name: 'Admin', id: '' },
       date: new Date().toISOString().split('T')[0],
-      status: 'draft',
+      categories: [],
+      tags: [],
       meta_title: '',
       meta_description: '',
+      status: 'draft',
       is_active: true,
     });
     setShowCreateModal(true);
@@ -115,17 +159,17 @@ const Portfolio = () => {
     try {
       setError('');
       if (editingId) {
-        await updatePortfolio(editingId, editForm);
+        await updateBlog(editingId, editForm);
       } else {
-        await createPortfolio(editForm);
+        await createBlog(editForm);
       }
       setShowEditModal(false);
       setShowCreateModal(false);
       setEditingId(null);
       setEditForm({});
-      await loadPortfolios();
+      await loadBlogs();
     } catch (error) {
-      setError('Error saving portfolio: ' + error.message);
+      setError('Error saving blog: ' + error.message);
     }
   };
 
@@ -167,8 +211,8 @@ const Portfolio = () => {
         {/* Header with Create Button */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Portfolio Management</h1>
-            <p className="text-sm text-gray-600 mt-1">Manage all portfolio items</p>
+            <h1 className="text-2xl font-bold text-gray-900">Blog Management</h1>
+            <p className="text-sm text-gray-600 mt-1">Manage all blog posts</p>
           </div>
           <button
             onClick={handleCreate}
@@ -177,11 +221,96 @@ const Portfolio = () => {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 4v16m8-8H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            Create New Portfolio Item
+            Create New Blog Post
           </button>
         </div>
 
-        {/* Portfolios Table */}
+        {/* Filters */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Blog Posts</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Search by title, excerpt, or content..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="publish">Published</option>
+              </select>
+            </div>
+
+            {/* Author Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
+              <input
+                type="text"
+                placeholder="Filter by author..."
+                value={authorFilter}
+                onChange={(e) => setAuthorFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Date From */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Date To */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          <div className="mt-4 flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              Showing {filteredBlogs.length} of {blogs.length} blog posts
+            </div>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+                setAuthorFilter('');
+                setDateFrom('');
+                setDateTo('');
+              }}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Blogs Table */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -189,53 +318,50 @@ const Portfolio = () => {
                 <tr>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700">Title</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700">Slug</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700">Client</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700">Category</th>
+                  <th className="text-left py-4 px-6 font-semibold text-gray-700">Author</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700">Date</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700">Status</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {portfolios.length === 0 ? (
+                {filteredBlogs.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-12 text-gray-500">
-                      No portfolio items found. Create a new portfolio item to get started.
+                    <td colSpan="6" className="text-center py-12 text-gray-500">
+                      {blogs.length === 0
+                        ? "No blog posts found. Create a new blog post to get started."
+                        : "No blog posts match your current filters."
+                      }
                     </td>
                   </tr>
                 ) : (
-                  portfolios.map((portfolio) => {
-                    const portfolioId = portfolio._id || portfolio.id;
+                  filteredBlogs.map((blog) => {
+                    const blogId = blog._id || blog.id;
                     return (
-                      <tr key={portfolioId} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-6 font-medium">{portfolio.title || '-'}</td>
-                        <td className="py-4 px-6 text-sm text-gray-600">{portfolio.slug || '-'}</td>
-                        <td className="py-4 px-6 text-sm text-gray-600">{portfolio.client || '-'}</td>
-                        <td className="py-4 px-6">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                            {portfolio.category?.name || portfolio.category?.slug || '-'}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-600">{formatDate(portfolio.date)}</td>
+                      <tr key={blogId} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-6 font-medium">{blog.title || '-'}</td>
+                        <td className="py-4 px-6 text-sm text-gray-600">{blog.slug || '-'}</td>
+                        <td className="py-4 px-6 text-sm text-gray-600">{blog.author?.name || 'Admin'}</td>
+                        <td className="py-4 px-6 text-sm text-gray-600">{formatDate(blog.date)}</td>
                         <td className="py-4 px-6">
                           <span className={`px-2 py-1 rounded text-xs ${
-                            (portfolio.status === 'published' || portfolio.status === 'completed') && portfolio.is_active
+                            blog.status === 'publish' && blog.is_active
                               ? 'bg-green-100 text-green-700' 
                               : 'bg-gray-100 text-gray-700'
                           }`}>
-                            {portfolio.status === 'published' || portfolio.status === 'completed' ? 'Published' : 'Draft'}
+                            {blog.status === 'publish' && blog.is_active ? 'Published' : 'Draft'}
                           </span>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleEdit(portfolio)}
+                              onClick={() => handleEdit(blog)}
                               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
                             >
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDelete(portfolioId)}
+                              onClick={() => handleDelete(blogId)}
                               className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
                             >
                               Delete
@@ -257,7 +383,7 @@ const Portfolio = () => {
             <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {editingId ? 'Edit Portfolio Item' : 'Create New Portfolio Item'}
+                  {editingId ? 'Edit Blog Post' : 'Create New Blog Post'}
                 </h2>
                 <button
                   onClick={handleCancel}
@@ -281,7 +407,7 @@ const Portfolio = () => {
                       value={editForm.title}
                       onChange={(e) => handleTitleChange(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Portfolio Item Title"
+                      placeholder="Blog Post Title"
                       required
                     />
                   </div>
@@ -295,66 +421,24 @@ const Portfolio = () => {
                       value={editForm.slug}
                       onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="portfolio-item-slug"
+                      placeholder="blog-post-slug"
                       required
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Client
+                      Author Name
                     </label>
                     <input
                       type="text"
-                      value={editForm.client || ''}
-                      onChange={(e) => setEditForm({ ...editForm, client: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Client Name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Duration
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.duration || ''}
-                      onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., 3 months, 6 weeks"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.category?.name || ''}
+                      value={editForm.author?.name || ''}
                       onChange={(e) => setEditForm({ 
                         ...editForm, 
-                        category: { ...editForm.category, name: e.target.value } 
+                        author: { ...editForm.author, name: e.target.value } 
                       })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., Web Development"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category Slug
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.category?.slug || ''}
-                      onChange={(e) => setEditForm({ 
-                        ...editForm, 
-                        category: { ...editForm.category, slug: e.target.value } 
-                      })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="web-development"
+                      placeholder="Author Name"
                     />
                   </div>
 
@@ -380,8 +464,7 @@ const Portfolio = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="draft">Draft</option>
-                      <option value="published">Published</option>
-                      <option value="completed">Completed</option>
+                      <option value="publish">Publish</option>
                     </select>
                   </div>
 
@@ -400,7 +483,7 @@ const Portfolio = () => {
                   </div>
                 </div>
 
-                {/* Excerpt and Description */}
+                {/* Excerpt */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Excerpt
@@ -408,56 +491,9 @@ const Portfolio = () => {
                   <textarea
                     value={editForm.excerpt || ''}
                     onChange={(e) => setEditForm({ ...editForm, excerpt: e.target.value })}
-                    rows="2"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Short excerpt..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={editForm.description || ''}
-                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Portfolio item description..."
-                  />
-                </div>
-
-                {/* Technologies */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Technologies (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={Array.isArray(editForm.technologies) ? editForm.technologies.join(', ') : ''}
-                    onChange={(e) => {
-                      const technologies = e.target.value.split(',').map(tech => tech.trim()).filter(tech => tech);
-                      setEditForm({ ...editForm, technologies });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="React, Node.js, MongoDB"
-                  />
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={Array.isArray(editForm.tags) ? editForm.tags.join(', ') : ''}
-                    onChange={(e) => {
-                      const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-                      setEditForm({ ...editForm, tags });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="tag1, tag2, tag3"
+                    placeholder="Short excerpt for the blog post..."
                   />
                 </div>
 
@@ -547,7 +583,7 @@ const Portfolio = () => {
                                 setUploadingImage(true);
                                 setError('');
                                 const result = await uploadImage(file);
-                                const imageUrl = `http://localhost:5030${result.url}`;
+                                const imageUrl = `${IMAGE_BASE_URL}${result.url}`;
                                 setEditForm({ ...editForm, featuredImage: imageUrl });
                               } catch (err) {
                                 setError('Failed to upload image: ' + err.message);
@@ -585,183 +621,10 @@ const Portfolio = () => {
                     )}
                   </div>
                 </div>
-
-                {/* Additional Images */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Additional Images
-                  </label>
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 hover:border-blue-400 transition-all duration-200 group"
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.add('border-blue-400', 'bg-blue-50');
-                        }}
-                        onDragLeave={(e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
-                        }}
-                        onDrop={async (e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
-
-                          const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-
-                          if (files.length > 0) {
-                            try {
-                              setUploadingImage(true);
-                              setError('');
-
-                              const uploadedUrls = [];
-                              for (const file of files) {
-                                // Validate file size (5MB limit)
-                                if (file.size > 5 * 1024 * 1024) {
-                                  setError(`File "${file.name}" is too large. Maximum size is 5MB.`);
-                                  return;
-                                }
-
-                                const result = await uploadImage(file);
-                                const imageUrl = `http://localhost:5030${result.url}`;
-                                uploadedUrls.push(imageUrl);
-                              }
-
-                              // Add new images to existing ones
-                              const currentImages = Array.isArray(editForm.images) ? editForm.images : [];
-                              setEditForm({ ...editForm, images: [...currentImages, ...uploadedUrls] });
-                            } catch (err) {
-                              setError('Failed to upload images: ' + err.message);
-                            } finally {
-                              setUploadingImage(false);
-                            }
-                          } else {
-                            setError('Please drop valid image files');
-                          }
-                        }}
-                      >
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          {uploadingImage ? (
-                            <div className="flex flex-col items-center">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                              <p className="text-sm text-blue-600 font-medium">Uploading...</p>
-                            </div>
-                          ) : (
-                            <>
-                              <svg className="w-8 h-8 mb-2 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                              </svg>
-                              <p className="mb-2 text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
-                                <span className="font-semibold">Click to choose images</span> or drag and drop
-                              </p>
-                              <p className="text-xs text-gray-500">PNG, JPG, GIF, WEBP (MAX. 5MB each) - Multiple files allowed</p>
-                            </>
-                          )}
-                        </div>
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          multiple
-                          onChange={async (e) => {
-                            const files = Array.from(e.target.files);
-                            if (files.length > 0) {
-                              try {
-                                setUploadingImage(true);
-                                setError('');
-
-                                const uploadedUrls = [];
-                                for (const file of files) {
-                                  // Validate file size (5MB limit)
-                                  if (file.size > 5 * 1024 * 1024) {
-                                    setError(`File "${file.name}" is too large. Maximum size is 5MB.`);
-                                    return;
-                                  }
-
-                                  // Validate file type
-                                  if (!file.type.startsWith('image/')) {
-                                    setError(`File "${file.name}" is not a valid image file.`);
-                                    return;
-                                  }
-
-                                  const result = await uploadImage(file);
-                                  const imageUrl = `http://localhost:5030${result.url}`;
-                                  uploadedUrls.push(imageUrl);
-                                }
-
-                                // Add new images to existing ones
-                                const currentImages = Array.isArray(editForm.images) ? editForm.images : [];
-                                setEditForm({ ...editForm, images: [...currentImages, ...uploadedUrls] });
-                              } catch (err) {
-                                setError('Failed to upload images: ' + err.message);
-                              } finally {
-                                setUploadingImage(false);
-                              }
-                            }
-                          }}
-                          disabled={uploadingImage}
-                        />
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Additional Manual URLs (comma-separated)
-                      </label>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Enter additional image URLs manually. Uploaded images above are managed separately.
-                      </p>
-                      <textarea
-                        value=""
-                        onChange={(e) => {
-                          // For now, we'll keep this simple - manual URLs can be added later if needed
-                          // The main functionality is through file upload
-                        }}
-                        rows="2"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="https://example.com/image1.jpg,&#10;https://example.com/image2.jpg"
-                        disabled
-                      />
-                      <p className="text-xs text-gray-400 mt-1">
-                        Manual URL entry disabled - use file upload above for better experience
-                      </p>
-                    </div>
-                    {Array.isArray(editForm.images) && editForm.images.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2">
-                          Additional Images Preview ({editForm.images.length} uploaded)
-                        </p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {editForm.images.map((imageUrl, index) => (
-                            <div key={index} className="relative group">
-                              <img
-                                src={imageUrl}
-                                alt={`Additional image ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
-                                onError={(e) => e.target.style.display = 'none'}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newImages = editForm.images.filter((_, i) => i !== index);
-                                  setEditForm({ ...editForm, images: newImages });
-                                }}
-                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Content */}
                 <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Content</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Content</h3>
+                  </div>
                   <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
                       <strong>💡 Tip:</strong> HTML is supported. To include images in your content, use HTML img tags like:
@@ -778,7 +641,24 @@ const Portfolio = () => {
                     onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
                     rows="15"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                    placeholder="Enter your portfolio content (HTML supported)..."
+                    placeholder="Enter your blog post content (HTML supported)..."
+                  />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={Array.isArray(editForm.tags) ? editForm.tags.join(', ') : ''}
+                    onChange={(e) => {
+                      const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                      setEditForm({ ...editForm, tags });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="tag1, tag2, tag3"
                   />
                 </div>
 
@@ -826,7 +706,7 @@ const Portfolio = () => {
                   onClick={handleSave}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {editingId ? 'Save Changes' : 'Create Portfolio Item'}
+                  {editingId ? 'Save Changes' : 'Create Blog Post'}
                 </button>
               </div>
             </div>
@@ -837,7 +717,7 @@ const Portfolio = () => {
   );
 };
 
-export default Portfolio;
+export default Blog;
 
 
 
