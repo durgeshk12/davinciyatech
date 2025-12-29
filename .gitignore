@@ -7,10 +7,30 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+client/node_modules
+server/node_modules
+
+# Build outputs
 dist
 dist-ssr
-*.local
+client/dist
+client/dist-ssr
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+server/.env
+
+# Database backups
+backup/
+!backup/package.json
+!backup/README.md
+!backup/*.js
+!backup/*.sh
+!backup/.gitignore
 
 # Editor directories and files
 .vscode/*
