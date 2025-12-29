@@ -24,13 +24,19 @@ client/dist-ssr
 .env.*.local
 server/.env
 
-# Database backups
-backup/
+# Database backups - ignore backup files but keep scripts
+backup/database-backups/
+backup/*.tar.gz
+backup/*.json
+backup/node_modules/
+backup/*.log
 !backup/package.json
+!backup/package-lock.json
 !backup/README.md
 !backup/*.js
 !backup/*.sh
 !backup/.gitignore
+!backup/*.md
 
 # Editor directories and files
 .vscode/*

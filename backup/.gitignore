@@ -1,0 +1,19 @@
+# Database backups - actual backup files
+database-backups/
+*.tar.gz
+*.json
+!package.json
+!package-lock.json
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Keep all scripts and documentation
+!*.js
+!*.sh
+!*.md
+!.gitignore
+

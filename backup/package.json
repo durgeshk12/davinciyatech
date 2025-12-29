@@ -1,0 +1,16 @@
+{
+  "name": "davinciyatech-backup",
+  "version": "1.0.0",
+  "description": "Database backup scripts for Davinciyatech",
+  "type": "module",
+  "main": "backup-database.js",
+  "scripts": {
+    "backup": "node backup-database.js",
+    "backup:shell": "./backup-database.sh"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "mongoose": "^8.0.3"
+  }
+}
+
